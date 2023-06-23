@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="authorize" name="Authorize">
+        <h1>Authorize access to <t t-out="client_id" /></h1>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()" />
+            <t t-foreach="scopes" t-as="scope">
+                <input type="checkbox" t-attf-name="scopes-{{ scope }}" t-value="scope" />
+                <t t-out="scope" />
+            </t>
+            <button type="submit">Authorize</button>
+        </form>
+    </template>
+</odoo>

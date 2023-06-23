@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+v.access_oauth_client_user,User,v_oauth_provider.model_oauth_client,oauth_user,1,0,0,0
+v.access_oauth_client_manager,Manager,v_oauth_provider.model_oauth_client,oauth_manager,1,1,1,1
+
+
+v.access_oauth_client_user,Internal User,v_oauth_provider.model_oauth_client,base.group_user,1,0,0,0
+v.access_oauth_client_portal,Portal User,v_oauth_provider.model_oauth_client,base.group_portal,1,0,0,0
+v.access_oauth_client_public,Public User,v_oauth_provider.model_oauth_client,base.group_public,1,0,0,0
+
+v_oauth_provider.access_oauth_token,access_oauth_token,v_oauth_provider.model_oauth_token,base.group_user,1,0,0,0
+v_oauth_provider.access_oauth_authorization_code,access_oauth_authorization_code,v_oauth_provider.model_oauth_authorization_code,base.group_user,1,0,0,0
