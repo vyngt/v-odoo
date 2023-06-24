@@ -1,0 +1,67 @@
+<odoo>
+    <record id="view_oauth_provider_scope_tree" model="ir.ui.view">
+        <field name="name">oauth.provider.scope.tree</field>
+        <field name="model">oauth.provider.scope</field>
+        <field name="arch" type="xml">
+            <tree string="OAuth Provider Scopes">
+                <field name="name" />
+                <field name="code" />
+                <field name="description" />
+                <field name="model_id" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_oauth_provider_scope_form" model="ir.ui.view">
+        <field name="name">oauth.provider.scope.form</field>
+        <field name="model">oauth.provider.scope</field>
+        <field name="arch" type="xml">
+            <form string="OAuth Provider Scopes">
+                <sheet>
+                    <h1>
+                        <field name="name" />
+                    </h1>
+                    <group>
+                        <field name="code" />
+                        <field name="description" />
+                    </group>
+                    <group string="Filter Settings">
+                        <field name="model_id" />
+                        <field name="filter_id" />
+                        <field name="model" invisible="1" />
+                    </group>
+                    <group string="Fields">
+                        <field name="field_ids">
+                            <tree string="Fields">
+                                <field name="name" />
+                                <field name="field_description" />
+                                <field name="ttype" />
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_oauth_provider_scope_search" model="ir.ui.view">
+        <field name="name">oauth.provider.scope.search</field>
+        <field name="model">oauth.provider.scope</field>
+        <field name="arch" type="xml">
+            <search string="OAuth2 Provider Scopes">
+                <field name="name" />
+                <field name="code" />
+                <field name="description" />
+                <field name="model_id" />
+            </search>
+        </field>
+    </record>
+    <record model="ir.actions.act_window" id="act_open_oauth_provider_scope_view">
+        <field name="name">OAuth2 Provider Scopes</field>
+        <field name="res_model">oauth.provider.scope</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_oauth_provider_scope" name="OAuth2 Provide Scopes"
+        parent="v_oauth_provider.oauth_provider"
+        action="act_open_oauth_provider_scope_view" />
+
+</odoo>

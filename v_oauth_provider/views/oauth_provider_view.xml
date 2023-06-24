@@ -1,0 +1,3 @@
+<odoo>
+    <menuitem id="oauth_provider" name="OAuth2 Provider" parent="v.base_menu" />
+</odoo>

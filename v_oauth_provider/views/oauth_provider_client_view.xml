@@ -1,0 +1,66 @@
+<odoo>
+    <record id="view_oauth_provider_client_tree" model="ir.ui.view">
+        <field name="name">oauth.provider.client.tree</field>
+        <field name="model">oauth.provider.client</field>
+        <field name="arch" type="xml">
+            <tree string="OAuth Provider Clients">
+                <field name="name" />
+                <field name="identifier" />
+                <field name="grant_type" />
+                <field name="response_type" />
+                <field name="scope_ids" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_oauth_provider_client_form" model="ir.ui.view">
+        <field name="name">oauth.provider.client.form</field>
+        <field name="model">oauth.provider.client</field>
+        <field name="arch" type="xml">
+            <form string="OAuth Provider Clients">
+                <sheet>
+                    <h1>
+                        <field name="name" />
+                    </h1>
+                    <group>
+                        <field name="identifier" />
+                        <field name="grant_type" />
+                        <field name="response_type" />
+                    </group>
+                    <group string="Scopes">
+                        <field name="scope_ids" widget="many2many_tags" />
+                    </group>
+                    <notebook colspan="4">
+                        <page string="Allowed Redirect URIs">
+                            <field name="redirect_uri_ids">
+                                <tree string="Redirect URIs" editable="bottom">
+                                    <field name="sequence" widget="handle" />
+                                    <field name="name" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_oauth_provider_client_search" model="ir.ui.view">
+        <field name="name">oauth.provider.client.search</field>
+        <field name="model">oauth.provider.client</field>
+        <field name="arch" type="xml">
+            <search string="OAuth2 Provider Clients">
+                <field name="name" />
+                <field name="identifier" />
+                <field name="scope_ids" />
+            </search>
+        </field>
+    </record>
+    <record model="ir.actions.act_window" id="act_open_oauth_provider_client_view">
+        <field name="name">OAuth2 Provider Clients</field>
+        <field name="res_model">oauth.provider.client</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_oauth_provider_client" name="OAuth2 Client"
+        parent="v_oauth_provider.oauth_provider" action='act_open_oauth_provider_client_view' />
+
+</odoo>

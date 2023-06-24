@@ -1,6 +1,7 @@
 import datetime
 import time
 from collections import defaultdict
+from typing import Any
 
 from odoo import api, fields, models
 from odoo.tools.safe_eval import safe_eval
@@ -25,7 +26,7 @@ class OAuth2ProviderScope(models.Model):
         string="Model",
         required=True,
         help="Model allowed to be accessed by this scope.",
-        ondelete="null",
+        ondelete="cascade",
     )
     model = fields.Char(
         related="model_id.model",
@@ -62,49 +63,53 @@ class OAuth2ProviderScope(models.Model):
         }
 
     # @api.multi
-    # def get_data_for_model(self, model, res_id=None, all_scopes_match=False):
-    #     """ Return the data matching the scopes from the requested model """
-    #     data = defaultdict(dict)
-    #     eval_context = self._get_ir_filter_eval_context()
-    #     all_scopes_records = self.env[model]
-    #     for scope in self.filtered(lambda record: record.model == model):
-    #         # Retrieve the scope's domain
-    #         filter_domain = [(1, '=', 1)]
-    #         if scope.filter_id:
-    #             filter_domain = safe_eval(
-    #                 scope.filter_id.sudo().domain, eval_context)
-    #         if res_id is not None:
-    #             filter_domain.append(('id', '=', res_id))
+    def get_data_for_model(self, model, res_id=None, all_scopes_match=False):
+        """Return the data matching the scopes from the requested model"""
+        scope: Any
 
-    #         # Retrieve data of the matching records, depending on the scope's
-    #         # fields
-    #         records = self.env[model].search(filter_domain)
-    #         for record_data in records.read(scope.field_ids.mapped('name')):
-    #             for field, value in record_data.items():
-    #                 if isinstance(value, tuple):
-    #                     # Return only the name for a many2one
-    #                     data[record_data['id']][field] = value[1]
-    #                 else:
-    #                     data[record_data['id']][field] = value
+        data = defaultdict(dict)
+        eval_context = self._get_ir_filter_eval_context()
+        all_scopes_records = self.env[model]
+        for scope in self.filtered(lambda record: record.model == model):
+            # Retrieve the scope's domain
+            filter_domain = [(1, "=", 1)]
+            if scope.filter_id:
+                filter_domain = safe_eval(scope.filter_id.sudo().domain, eval_context)
+            if res_id is not None:
+                filter_domain.append(("id", "=", res_id))  # type: ignore
 
-    #         # Keep a list of records that match all scopes
-    #         if not all_scopes_records:
-    #             all_scopes_records = records
-    #         else:
-    #             all_scopes_records &= records
+            # Retrieve data of the matching records, depending on the scope's
+            # fields
+            records = self.env[model].search(filter_domain)
+            for record_data in records.read(scope.field_ids.mapped("name")):
+                for field, value in record_data.items():
+                    if isinstance(value, tuple):
+                        # Return only the name for a many2one
+                        data[record_data["id"]][field] = value[1]
+                    else:
+                        data[record_data["id"]][field] = value
 
-    #     # If all scopes are required to match, filter the results to keep only
-    #     # those mathing all scopes
-    #     if all_scopes_match:
-    #         data = dict(filter(
-    #             lambda record_data: record_data[0] in all_scopes_records.ids,
-    #             data.items()))
+            # Keep a list of records that match all scopes
+            if not all_scopes_records:
+                all_scopes_records = records
+            else:
+                all_scopes_records &= records
 
-    #     # If a single record was requested, return only data coming from this
-    #     # record
-    #     # Return an empty dictionnary if this record didn't recieve data to
-    #     # return
-    #     if res_id is not None:
-    #         data = data.get(res_id, {})
+        # If all scopes are required to match, filter the results to keep only
+        # those matching all scopes
+        if all_scopes_match:
+            data = dict(
+                filter(
+                    lambda record_data: record_data[0] in all_scopes_records.ids,
+                    data.items(),
+                )
+            )
 
-    #     return data
+        # If a single record was requested, return only data coming from this
+        # record
+        # Return an empty dictionary if this record didn't receive data to
+        # return
+        if res_id is not None:
+            data = data.get(res_id, {})
+
+        return data

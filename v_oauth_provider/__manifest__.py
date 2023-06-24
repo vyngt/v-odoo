@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
-    "name": "V OAuth Provider",
-    "summary": """OAuth Provider""",
+    "name": "OAuth2 Provider",
+    "summary": """OAuth2 Provider""",
     "description": """
         OAuth Provider
     """,
@@ -14,7 +14,10 @@
         "security/oauth_provider_security.xml",
         "security/ir.model.access.csv",
         "views/templates.xml",
-        "views/views.xml",
+        "views/oauth_provider_view.xml",
+        "views/oauth_provider_client_view.xml",
+        "views/oauth_provider_scope_view.xml",
     ],
     "license": "LGPL-3",
+    "pre_init_hook": "pre_init_hook",
 }  # type: ignore
