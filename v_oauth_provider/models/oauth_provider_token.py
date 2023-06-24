@@ -5,20 +5,36 @@ from odoo import _, api, exceptions, fields, models
 
 class OAuth2ProviderToken(models.Model):
     _name = "oauth.provider.token"
-    _description = "OAuth Provider Token"
-    _rec_name = "access_token"
+    _description = "OAuth2 Provider Token"
+    _rec_name = "token"
 
-    user_id = fields.Many2one("res.users", string="User", required=True)
-    client_id = fields.Many2one(
-        "oauth.provider.client", string="OAuth Client", required=True
+    token = fields.Char(required=True, help="The token itself.")
+    token_type = fields.Selection(
+        selection=[("Bearer", "Bearer")],
+        required=True,
+        default="Bearer",
+        help="Type of token stored. Currently, only the bearer token type is "
+        "available.",
     )
-
-    scopes = fields.Text("Scopes", translate=False)
-
-    access_token = fields.Char("Access Token", required=True)
-    refresh_token = fields.Char("Refresh Token")
-    expires_at = fields.Datetime("Expires at", required=True)
-
+    refresh_token = fields.Char(help="The refresh token, if applicable.")
+    client_id = fields.Many2one(
+        comodel_name="oauth.provider.client",
+        string="Client",
+        required=True,
+        help="Client associated to this token.",
+    )
+    user_id = fields.Many2one(
+        comodel_name="res.users",
+        string="User",
+        required=True,
+        help="User associated to this token.",
+    )
+    scope_ids = fields.Many2many(
+        comodel_name="oauth.provider.scope",
+        string="Scopes",
+        help="Scopes allowed by this token.",
+    )
+    expires_at = fields.Datetime(required=True, help="Expiration time of the token.")
     active = fields.Boolean(
         compute="_compute_active",
         search="_search_active",
@@ -26,8 +42,16 @@ class OAuth2ProviderToken(models.Model):
     )
 
     _sql_constraints = [
-        ("oauth_access_token_unique", "UNIQUE(access_token)", "Must Unique"),
-        ("oauth_refresh_token_unique", "UNIQUE(refresh_token)", "Must Unique"),
+        (
+            "token_unique",
+            "UNIQUE (token, client_id)",
+            "The token must be unique per client !",
+        ),
+        (
+            "refresh_token_unique",
+            "UNIQUE (refresh_token, client_id)",
+            "The refresh token must be unique per client !",
+        ),
     ]
 
     def _compute_active(self):
@@ -73,13 +97,18 @@ class OAuth2ProviderToken(models.Model):
         return domain
 
     def generate_user_id(self):
-        # TODO
         self.ensure_one()
+        return self.client_id.generate_user_id(self.user_id)  # type: ignore
 
-        return False
-
-    def get_data_for_model(self):
-        # TODO
+    def get_data_for_model(self, model, res_id=None, all_scopes_match=False):
         self.ensure_one()
+        data = []
 
-        return False
+        for scope_id in self.scope_ids:
+            scope_id: Any
+            _data = scope_id.get_data_for_model(
+                model, res_id=res_id, all_scopes_match=all_scopes_match
+            )
+            data.append(_data)
+
+        return data

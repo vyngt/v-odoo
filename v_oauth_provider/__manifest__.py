@@ -3,7 +3,8 @@
     "name": "OAuth2 Provider",
     "summary": """OAuth2 Provider""",
     "description": """
-        OAuth Provider
+        <p>OAuth2 Provider</p>
+        <p>ref: https://github.com/OCA/server-tools/tree/9.0/oauth_provider</p>
     """,
     "author": "VyNT",
     "website": "https://gitthub.com/vyngt",

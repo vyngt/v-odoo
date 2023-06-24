@@ -62,7 +62,6 @@ class OAuth2ProviderScope(models.Model):
             "user": self.env.user,
         }
 
-    # @api.multi
     def get_data_for_model(self, model, res_id=None, all_scopes_match=False):
         """Return the data matching the scopes from the requested model"""
         scope: Any
