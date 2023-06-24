@@ -6,19 +6,6 @@ from oauthlib.oauth2 import RequestValidator
 
 from odoo import fields, http
 
-# from ..models.oauth import OAuthClient
-
-
-# class OdooValidator(RequestValidator):
-#     def validate_client_id(self, client_id: str, _request: Request, *args, **kwargs):
-#         client = (
-#             request.env["oauth.client"]
-#             .sudo()
-#             .search([("client_id", "=", client_id)], limit=1)
-#         )
-
-#         return True if client else False
-
 
 class OdooValidator(RequestValidator):
     def _load_client(self, request, client_id=None):
@@ -66,7 +53,7 @@ class OdooValidator(RequestValidator):
 
     def client_authentication_required(self, request, *args, **kwargs):
         """Determine if the client authentication is required for the request"""
-        # If an auth string was specified, unconditionnally authenticate
+        # If an auth string was specified, unconditionally authenticate
         if self._extract_auth(request):
             return True
 
@@ -108,7 +95,7 @@ class OdooValidator(RequestValidator):
         return client.redirect_uri_ids and client.redirect_uri_ids[0].name or ""
 
     def get_default_scopes(self, client_id, request, *args, **kwargs):
-        """Returns a list of default scoprs for the client"""
+        """Returns a list of default scopes for the client"""
         client = http.request.env["oauth.provider.client"].search(
             [
                 ("identifier", "=", client_id),
@@ -172,7 +159,7 @@ class OdooValidator(RequestValidator):
 
         Called after refreshing an access token
         Always refresh the token by default, but child classes could override
-        this method to change this behaviour.
+        this method to change this behavior.
         """
         return True
 
@@ -265,7 +252,7 @@ class OdooValidator(RequestValidator):
         )
 
     def validate_redirect_uri(self, client_id, redirect_uri, request, *args, **kwargs):
-        """Ensure the client is allowed to use the requested redurect_uri"""
+        """Ensure the client is allowed to use the requested redirect_uri"""
         return (
             request.client.identifier == client_id
             and redirect_uri in request.client.mapped("redirect_uri_ids.name")
@@ -297,7 +284,7 @@ class OdooValidator(RequestValidator):
         )
 
     def validate_user(self, username, password, client, request, *args, **kwargs):
-        """Ensure the usernamd and password are valid"""
+        """Ensure the username and password are valid"""
         uid = http.request.session.authenticate(
             http.request.session.db, username, password
         )

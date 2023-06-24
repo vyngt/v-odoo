@@ -24,7 +24,7 @@ class OAuth2ProviderClient(models.Model):
         help="Unique identifier of the client.",
     )
 
-    # user_id = fields.Many2one("res.users", string="User", required=True)
+    secret = fields.Char(help="Optional secret used to authenticate the client.")
 
     grant_type = fields.Selection(
         selection=[
