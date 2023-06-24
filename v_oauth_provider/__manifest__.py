@@ -21,4 +21,8 @@
     ],
     "license": "LGPL-3",
     "pre_init_hook": "pre_init_hook",
+    "external_dependencies": {
+        "python": ["oauthlib"],
+    },
+    "application": True,
 }  # type: ignore

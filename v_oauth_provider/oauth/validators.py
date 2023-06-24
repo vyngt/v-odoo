@@ -18,7 +18,7 @@ class OdooValidator(RequestValidator):
                 ]
             )
             request.odoo_user = http.request.env.user
-            request.client.client_id = request.client.identifier
+            request.client.identifier = request.client.identifier
 
     def _extract_auth(self, request):
         """Extract auth string from request headers"""

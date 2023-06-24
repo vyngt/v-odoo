@@ -17,9 +17,6 @@ _logger = logging.getLogger(__name__)
 
 
 class OAuth2ProviderController(http.Controller):
-    def __init__(self):
-        super(OAuth2ProviderController, self).__init__()
-
     def _get_request_information(self):
         """Retrieve needed arguments for oauthlib methods"""
         uri = request.httprequest.base_url
@@ -62,7 +59,9 @@ class OAuth2ProviderController(http.Controller):
             json.dumps(data), status=status, headers=headers
         )
 
-    @http.route("/oauth2/authorize", type="http", auth="user", methods=["GET"])
+    @http.route(
+        "/oauth2/authorize", type="http", auth="user", methods=["GET"], website=True
+    )
     def authorize(
         self,
         client_id=None,
@@ -140,7 +139,9 @@ class OAuth2ProviderController(http.Controller):
             },
         )
 
-    @http.route("/oauth2/authorize", type="http", auth="user", methods=["POST"])
+    @http.route(
+        "/oauth2/authorize", type="http", auth="user", methods=["POST"], website=True
+    )
     def authorize_post(self, *args, **kwargs):
         """Redirect to the requested URI during the authorization"""
         client = request.env["oauth.provider.client"].search(
