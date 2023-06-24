@@ -1,44 +1,29 @@
 # -*- coding: utf-8 -*-
 import logging
 
+import oauthlib.common
+
 from odoo import http
 from odoo.http import request
-
-from ..oauth.validators import server
 
 _logger = logging.getLogger(__name__)
 
 
-class Authorization(http.Controller):
-    _authorization_endpoint = server
-
+class OAuth2Controller(http.Controller):
     def extract_request(self):
-        params = request.get_http_params()
-        uri = params.get("uri")
-        method = request.httprequest.method
-        body = None
-        headers = request.httprequest.headers
+        uri = http.request.httprequest.base_url
+        http_method = http.request.httprequest.method
+        body = oauthlib.common.urlencode(http.request.httprequest.values.items())
+        headers = http.request.httprequest.headers
 
-        return uri, method, body, headers
+        return uri, http_method, body, headers
 
     @http.route(
-        "/authorize", auth="user", type="http", website=True, methods=["GET", "POST"]
+        "/oauth2/authorize",
+        auth="user",
+        type="http",
+        website=True,
+        methods=["GET", "POST"],
     )
     def authorize(self, **kw):
-        _logger.info(f"{dir(request.httprequest)}")
-
-        uri, method, body, headers = self.extract_request()
-
-        _logger.info(f"{list(headers)}")
-
-        x = self._authorization_endpoint.validate_authorization_request(
-            uri, method, body, headers
-        )
-
-        _logger.info(f"Echo {x}")
-
         return request.render("v_oauth_provider.authorize")
-
-    # @http.route("/token")
-    # def token(self, **kw):
-    #     return request.render()

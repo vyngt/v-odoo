@@ -11,7 +11,7 @@
     "version": "16.0.1.0.0",
     "depends": ["v"],
     "data": [
-        "security/oauth_security.xml",
+        "security/oauth_provider_security.xml",
         "security/ir.model.access.csv",
         "views/templates.xml",
         "views/views.xml",

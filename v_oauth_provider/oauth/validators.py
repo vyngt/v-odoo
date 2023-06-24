@@ -6,7 +6,7 @@ from odoo.http import request
 # from ..models.oauth import OAuthClient
 
 
-class OdooRequestValidator(RequestValidator):
+class OdooValidator(RequestValidator):
     def validate_client_id(self, client_id: str, _request: Request, *args, **kwargs):
         client = (
             request.env["oauth.client"]
@@ -15,8 +15,3 @@ class OdooRequestValidator(RequestValidator):
         )
 
         return True if client else False
-
-
-validator = OdooRequestValidator()
-
-server = WebApplicationServer(validator)
