@@ -13,6 +13,8 @@ from odoo import fields, http
 from odoo.addons.web.controllers.utils import ensure_db
 from odoo.http import request
 
+from ..oauth.validators import OdooValidator
+
 _logger = logging.getLogger(__name__)
 
 
@@ -355,4 +357,41 @@ class OAuth2ProviderController(http.Controller):
         headers, body, status = oauth2_server.create_revocation_response(
             uri, http_method=http_method, body=body, headers=headers
         )
+        return werkzeug.wrappers.Response(body, status=status, headers=headers)
+
+    @http.route(
+        "/oauth2/.well-known/oauth-authorization-server",
+        type="http",
+        auth="none",
+        methods=["GET"],
+    )
+    def metadata_endpoint(self, **kw):
+        base_url = request.env["ir.config_parameter"].sudo().get_param("web.base.url")
+        if not oauth2.is_secure_transport(base_url):
+            return self._json_response(
+                data={"error": "this endpoint not ready"}, status=503
+            )
+
+        oauth_web_server = oauth2.WebApplicationServer(OdooValidator())
+
+        endpoint = oauth2.MetadataEndpoint(
+            [oauth_web_server],
+            claims={
+                "issuer": base_url,
+                "authorization_endpoint": f"{base_url}/oauth2/authorize",
+                "token_endpoint": f"{base_url}/oauth2/token",
+                "revocation_endpoint": f"{base_url}/oauth2/revoke_token",
+                "introspection_endpoint": f"{base_url}/oauth2/tokeninfo",
+                "grant_types_supported": ["authorization_code", "refresh_token"],
+                "response_types_supported": [
+                    "code",
+                ],
+            },
+        )
+        uri, http_method, body, headers = self._get_request_information()
+
+        headers, body, status = endpoint.create_metadata_response(
+            uri, http_method, body, headers
+        )
+
         return werkzeug.wrappers.Response(body, status=status, headers=headers)
