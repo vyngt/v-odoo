@@ -268,7 +268,7 @@ class OdooValidator(RequestValidator):
         """Ensure the refresh token is valid and associated to the client"""
         token = http.request.env["oauth.provider.token"].search(
             [
-                ("client_id", "=", client.id),
+                ("client_id.identifier", "=", client.client_id),
                 ("refresh_token", "=", refresh_token),
             ]
         )

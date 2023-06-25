@@ -28,10 +28,14 @@ class OAuth2ProviderController(http.Controller):
 
     def _check_access_token(self, access_token):
         """Check if the provided access token is valid"""
-        token = request.env["oauth.provider.token"].search(
-            [
-                ("token", "=", access_token),
-            ]
+        token = (
+            request.env["oauth.provider.token"]
+            .sudo()
+            .search(
+                [
+                    ("token", "=", access_token),
+                ]
+            )
         )
         if not token:
             return False
@@ -250,7 +254,9 @@ class OAuth2ProviderController(http.Controller):
             credentials=credentials,
         )
 
-        _logger.info(f"After: {headers}| {body}| {status}")
+        if existing_token:
+            # Remove old refresh token
+            existing_token.sudo().unlink()
 
         return werkzeug.wrappers.Response(body, status=status, headers=headers)
 
