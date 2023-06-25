@@ -98,7 +98,7 @@ class OAuth2ProviderToken(models.Model):
 
     def generate_user_id(self):
         self.ensure_one()
-        return self.client_id.generate_user_id(self.user_id)  # type: ignore
+        return self.client_id.sudo().generate_user_id(self.user_id)  # type: ignore
 
     def get_data_for_model(self, model, res_id=None, all_scopes_match=False):
         self.ensure_one()

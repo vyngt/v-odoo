@@ -27,6 +27,7 @@
                         <field name="response_type" />
                     </group>
                     <group string="Scopes">
+                        <field name="token_type" />
                         <field name="scope_ids" widget="many2many_tags" />
                     </group>
                     <notebook colspan="4">

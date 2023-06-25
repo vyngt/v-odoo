@@ -10,7 +10,7 @@ import werkzeug.wrappers  # type: ignore
 from oauthlib import oauth2
 
 from odoo import fields, http
-from odoo.addons.web.controllers.main import ensure_db
+from odoo.addons.web.controllers.utils import ensure_db
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class OAuth2ProviderController(http.Controller):
         scope=None,
         state=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """Check client's request, and display an authorization page to the user,
 
@@ -99,19 +99,17 @@ class OAuth2ProviderController(http.Controller):
             scopes, credentials = oauth2_server.validate_authorization_request(
                 uri, http_method=http_method, body=body, headers=headers
             )
+
             # Store only some values, because the pickling of the full request
             # object is not possible
-            request.httpsession["oauth_scopes"] = scopes
-            request.httpsession["oauth_credentials"] = {
+            request.session["oauth_scopes"] = scopes
+            request.session["oauth_credentials"] = {
                 "client_id": credentials["client_id"],
                 "redirect_uri": credentials["redirect_uri"],
                 "response_type": credentials["response_type"],
                 "state": credentials["state"],
             }
-            if client.skip_authorization:
-                # Skip the authorization page
-                # Useful when the application is trusted
-                return self.authorize_post()
+
         except oauth2.FatalClientError as e:
             return request.render(
                 "v_oauth_provider.authorization_error",
@@ -149,7 +147,7 @@ class OAuth2ProviderController(http.Controller):
                 (
                     "identifier",
                     "=",
-                    request.httpsession.get("oauth_credentials", {}).get("client_id"),
+                    request.session.get("oauth_credentials", {}).get("client_id"),
                 )
             ]
         )
@@ -165,8 +163,9 @@ class OAuth2ProviderController(http.Controller):
 
         # Retrieve needed arguments for oauthlib methods
         uri, http_method, body, headers = self._get_request_information()
-        scopes = request.httpsession["oauth_scopes"]
-        credentials = request.httpsession["oauth_credentials"]
+        scopes = request.session["oauth_scopes"]
+        credentials = request.session["oauth_credentials"]
+
         headers, body, status = oauth2_server.create_authorization_response(
             uri,
             http_method=http_method,
@@ -178,7 +177,9 @@ class OAuth2ProviderController(http.Controller):
 
         return werkzeug.utils.redirect(headers["Location"], code=status)
 
-    @http.route("/oauth2/token", type="http", auth="none", methods=["POST"], csrf=False)
+    @http.route(
+        "/oauth2/token", type="http", auth="public", methods=["POST"], csrf=False
+    )
     def token(
         self,
         client_id=None,
@@ -191,7 +192,7 @@ class OAuth2ProviderController(http.Controller):
         password=None,
         refresh_token=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """Return a token corresponding to the supplied information
 
@@ -201,9 +202,7 @@ class OAuth2ProviderController(http.Controller):
 
         # If no client_id is specified, get it from session
         if client_id is None:
-            client_id = request.httpsession.get("oauth_credentials", {}).get(
-                "client_id"
-            )
+            client_id = request.session.get("oauth_credentials", {}).get("client_id")
 
         client = (
             request.env["oauth.provider.client"]
@@ -217,6 +216,7 @@ class OAuth2ProviderController(http.Controller):
 
         if not client:
             return self._json_response(data={"error": "invalid_client_id"}, status=401)
+
         oauth2_server = client.get_oauth2_server()
 
         # Retrieve needed arguments for oauthlib methods
@@ -249,6 +249,8 @@ class OAuth2ProviderController(http.Controller):
             headers=headers,
             credentials=credentials,
         )
+
+        _logger.info(f"After: {headers}| {body}| {status}")
 
         return werkzeug.wrappers.Response(body, status=status, headers=headers)
 
@@ -319,7 +321,9 @@ class OAuth2ProviderController(http.Controller):
         data = token.get_data_for_model(model)
         return self._json_response(data=data)
 
-    @http.route("/oauth2/revoke_token", type="http", auth="none", methods=["POST"])
+    @http.route(
+        "/oauth2/revoke_token", type="http", auth="none", methods=["POST"], csrf=False
+    )
     def revoke_token(self, token=None, *args, **kwargs):
         """Revoke the supplied token"""
         ensure_db()

@@ -1,10 +1,13 @@
 import base64
+import logging
 from datetime import datetime, timedelta
 
 from oauthlib.common import Request
-from oauthlib.oauth2 import RequestValidator
+from oauthlib.oauth2 import Client, RequestValidator
 
 from odoo import fields, http
+
+_logger = logging.getLogger(__name__)
 
 
 class OdooValidator(RequestValidator):
@@ -12,13 +15,15 @@ class OdooValidator(RequestValidator):
         """Returns a client instance for the request"""
         client = request.client
         if not client:
-            request.client = http.request.env["oauth.provider.client"].search(
+            request.client_obj = http.request.env["oauth.provider.client"].search(
                 [
                     ("identifier", "=", client_id or request.client_id),
                 ]
             )
+            request.client = Client(request.client_obj.identifier)
+
             request.odoo_user = http.request.env.user
-            request.client.identifier = request.client.identifier
+            # request.client_obj.identifier = request.client_obj.identifier
 
     def _extract_auth(self, request):
         """Extract auth string from request headers"""
@@ -42,14 +47,14 @@ class OdooValidator(RequestValidator):
             client_id, client_secret = auth_string_decoded.split(":", 1)
 
         self._load_client(request)
-        return (request.client.identifier == client_id) and (
-            request.client.secret or ""
+        return (request.client_obj.identifier == client_id) and (
+            request.client_obj.secret or ""
         ) == (client_secret or "")
 
     def authenticate_client_id(self, client_id, request, *args, **kwargs):
         """Ensure client_id belong to a non-confidential client"""
         self._load_client(request, client_id=client_id)
-        return bool(request.client) and not request.client.secret
+        return bool(request.client_obj) and not request.client_obj.secret
 
     def client_authentication_required(self, request, *args, **kwargs):
         """Determine if the client authentication is required for the request"""
@@ -59,7 +64,7 @@ class OdooValidator(RequestValidator):
 
         self._load_client(request)
         return (
-            request.client.grant_type
+            request.client_obj.grant_type
             in (
                 "password",
                 "authorization_code",
@@ -107,7 +112,7 @@ class OdooValidator(RequestValidator):
         """Returns the list of scopes associated to the refresh token"""
         token = http.request.env["oauth.provider.token"].search(
             [
-                ("client_id", "=", request.client.id),
+                ("client_id", "=", request.client_obj.id),
                 ("refresh_token", "=", refresh_token),
             ]
         )
@@ -129,7 +134,7 @@ class OdooValidator(RequestValidator):
         """Check if the requested scopes are within a scope of the token"""
         token = http.request.env["oauth.provider.token"].search(
             [
-                ("client_id", "=", request.client.id),
+                ("client_id", "=", request.client_obj.id),
                 ("refresh_token", "=", refresh_token),
             ]
         )
@@ -173,14 +178,14 @@ class OdooValidator(RequestValidator):
         http.request.env["oauth.provider.authorization.code"].sudo().create(
             {
                 "code": code["code"],
-                "client_id": request.client.id,
+                "client_id": request.client_obj.id,
                 "user_id": request.odoo_user.id,
                 "redirect_uri_id": redirect_uri.id,
                 "scope_ids": [
                     (
                         6,
                         0,
-                        request.client.scope_ids.filtered(
+                        request.client_obj.scope_ids.filtered(
                             lambda record: record.code in request.scopes
                         ).ids,
                     )
@@ -196,13 +201,13 @@ class OdooValidator(RequestValidator):
                 "token": token["access_token"],
                 "token_type": token["token_type"],
                 "refresh_token": token.get("refresh_token"),
-                "client_id": request.client.id,
+                "client_id": request.client_obj.id,
                 "user_id": token.get("odoo_user_id", request.odoo_user.id),
                 "scope_ids": [
                     (
                         6,
                         0,
-                        request.client.scope_ids.filtered(
+                        request.client_obj.scope_ids.filtered(
                             lambda record: record.code in scopes
                         ).ids,
                     )
@@ -212,7 +217,8 @@ class OdooValidator(RequestValidator):
                 ),
             }
         )
-        return request.client.redirect_uri_ids[0].name
+
+        return request.client_obj.redirect_uri_ids[0].name
 
     def validate_bearer_token(self, token, scopes, request):
         """Ensure the supplied bearer token is valid, and allowed for the scopes"""
@@ -229,7 +235,7 @@ class OdooValidator(RequestValidator):
     def validate_client_id(self, client_id, request, *args, **kwargs):
         """Ensure client_id belong to a valid and active client"""
         self._load_client(request)
-        return bool(request.client)
+        return bool(request.client_obj)
 
     def validate_code(self, client_id, code, client, request, *args, **kwargs):
         """Check that the code is valid, and assigned to the given client"""
@@ -246,16 +252,16 @@ class OdooValidator(RequestValidator):
         self, client_id, grant_type, client, request, *args, **kwargs
     ):
         """Ensure the client is authorized to use the requested grant_type"""
-        return client.identifier == client_id and grant_type in (
-            client.grant_type,
+        return client.client_id == client_id and grant_type in (
+            request.client_obj.grant_type,
             "refresh_token",
         )
 
     def validate_redirect_uri(self, client_id, redirect_uri, request, *args, **kwargs):
         """Ensure the client is allowed to use the requested redirect_uri"""
         return (
-            request.client.identifier == client_id
-            and redirect_uri in request.client.mapped("redirect_uri_ids.name")
+            request.client_obj.identifier == client_id
+            and redirect_uri in request.client_obj.mapped("redirect_uri_ids.name")
         )
 
     def validate_refresh_token(self, refresh_token, client, request, *args, **kwargs):
@@ -273,14 +279,14 @@ class OdooValidator(RequestValidator):
     ):
         """Ensure the client is allowed to use the requested response_type"""
         return (
-            request.client.identifier == client_id
-            and response_type == request.client.response_type
+            request.client_obj.identifier == client_id
+            and response_type == request.client_obj.response_type
         )
 
     def validate_scopes(self, client_id, scopes, client, request, *args, **kwargs):
         """Ensure the client is allowed to access all requested scopes"""
-        return request.client.identifier == client_id and set(scopes).issubset(
-            set(request.client.mapped("scope_ids.code"))
+        return request.client_obj.identifier == client_id and set(scopes).issubset(
+            set(request.client_obj.mapped("scope_ids.code"))
         )
 
     def validate_user(self, username, password, client, request, *args, **kwargs):

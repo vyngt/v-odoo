@@ -55,6 +55,14 @@ class OAuth2ProviderClient(models.Model):
         help="Allowed redirect URIs for the client.",
     )
 
+    token_type = fields.Selection(
+        selection=[("random", "Randomly generated")],
+        required=True,
+        default="random",
+        help="Type of token to return. The base module only provides randomly "
+        "generated tokens.",
+    )
+
     _sql_constraints = [
         (
             "identifier_unique",
