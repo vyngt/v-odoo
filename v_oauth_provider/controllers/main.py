@@ -181,9 +181,7 @@ class OAuth2ProviderController(http.Controller):
 
         return werkzeug.utils.redirect(headers["Location"], code=status)
 
-    @http.route(
-        "/oauth2/token", type="http", auth="public", methods=["POST"], csrf=False
-    )
+    @http.route("/oauth2/token", type="http", auth="none", methods=["POST"], csrf=False)
     def token(
         self,
         client_id=None,
