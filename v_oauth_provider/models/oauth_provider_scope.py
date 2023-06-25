@@ -85,6 +85,8 @@ class OAuth2ProviderScope(models.Model):
                     if isinstance(value, tuple):
                         # Return only the name for a many2one
                         data[record_data["id"]][field] = value[1]
+                    elif isinstance(value, bytes):
+                        data[record_data["id"]][field] = value.decode()
                     else:
                         data[record_data["id"]][field] = value
 

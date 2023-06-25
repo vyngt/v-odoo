@@ -316,15 +316,19 @@ class OAuth2ProviderController(http.Controller):
                 data={"error": "invalid_or_expired_token"}, status=401
             )
 
-        model_obj = request.env["ir.model"].search(
-            [
-                ("model", "=", model),
-            ]
+        model_obj = (
+            request.env["ir.model"]
+            .sudo()
+            .search(
+                [
+                    ("model", "=", model),
+                ]
+            )
         )
         if not model_obj:
             return self._json_response(data={"error": "invalid_model"}, status=400)
 
-        data = token.get_data_for_model(model)
+        data = token.get_data_for_model(model, res_id=token.user_id.id)
         return self._json_response(data=data)
 
     @http.route(
