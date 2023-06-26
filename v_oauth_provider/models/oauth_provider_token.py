@@ -109,6 +109,10 @@ class OAuth2ProviderToken(models.Model):
             _data = scope_id.get_data_for_model(
                 model, res_id=res_id, all_scopes_match=all_scopes_match
             )
-            data.append(_data)
+            if _data:
+                data.append(_data)
+
+        if len(data) == 1:
+            return data[0]
 
         return data

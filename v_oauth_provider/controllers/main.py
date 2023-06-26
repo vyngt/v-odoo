@@ -290,27 +290,21 @@ class OAuth2ProviderController(http.Controller):
             data.update(user_id=token.generate_user_id())
         return self._json_response(data=data)
 
-    @http.route("/oauth2/userinfo", type="http", auth="none", methods=["GET"])
-    def userinfo(self, access_token=None, *args, **kwargs):
-        """Return some information about the user linked to the supplied token
-
-        Similar to Google's "userinfo" request
-        """
+    @http.route("/oauth2/userinfo", type="http", auth="bearer", methods=["GET"])
+    def userinfo(self, *args, **kwargs):
+        """Return some information about the user linked to the supplied token"""
         ensure_db()
-        token = self._check_access_token(access_token)
-        if not token:
-            return self._json_response(
-                data={"error": "invalid_or_expired_token"}, status=401
-            )
-
+        token = request.token
         data = token.get_data_for_model("res.users", res_id=token.user_id.id)
         return self._json_response(data=data)
 
-    @http.route("/oauth2/otherinfo", type="http", auth="none", methods=["GET"])
+    @http.route("/oauth2/otherinfo", type="http", auth="bearer", methods=["GET"])
     def otherinfo(self, access_token=None, model=None, *args, **kwargs):
         """Return allowed information about the requested model"""
+
+        # TODO: BUG
         ensure_db()
-        token = self._check_access_token(access_token)
+        token = request.token
         if not token:
             return self._json_response(
                 data={"error": "invalid_or_expired_token"}, status=401
@@ -328,7 +322,7 @@ class OAuth2ProviderController(http.Controller):
         if not model_obj:
             return self._json_response(data={"error": "invalid_model"}, status=400)
 
-        data = token.get_data_for_model(model, res_id=token.user_id.id)
+        data = token.get_data_for_model(model)
         return self._json_response(data=data)
 
     @http.route(
