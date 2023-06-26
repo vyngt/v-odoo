@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
+import logging
 import uuid
 
 from oauthlib import oauth2
@@ -8,6 +9,8 @@ from oauthlib import oauth2
 from odoo import api, fields, models
 
 from ..oauth.validators import OdooValidator
+
+_logger = logging.getLogger(__name__)
 
 
 class OAuth2ProviderClient(models.Model):
@@ -77,12 +80,16 @@ class OAuth2ProviderClient(models.Model):
         if validator is None:
             validator = OdooValidator()
 
-        return oauth2.WebApplicationServer(validator)
+        return oauth2.WebApplicationServer(validator, **kwargs)
 
     def generate_user_id(self, user):
         self.ensure_one()
 
-        user_identifier = self.identifier + user.sudo().oauth_identifier
+        app_identifier = self.identifier if self.identifier else ""
+        user_identifier = user.sudo().oauth_identifier
+        user_identifier = user_identifier if user_identifier else ""
+
+        combine = app_identifier + user_identifier
 
         # Use a sha256 to avoid a too long final string
-        return hashlib.sha256(user_identifier).hexdigest()
+        return hashlib.sha256(combine.encode()).hexdigest()

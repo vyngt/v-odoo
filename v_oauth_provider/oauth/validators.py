@@ -21,9 +21,7 @@ class OdooValidator(RequestValidator):
                 ]
             )
             request.client = Client(request.client_obj.identifier)
-
             request.odoo_user = http.request.env.user
-            # request.client_obj.identifier = request.client_obj.identifier
 
     def _extract_auth(self, request):
         """Extract auth string from request headers"""
@@ -173,7 +171,8 @@ class OdooValidator(RequestValidator):
         redirect_uri = http.request.env["oauth.provider.redirect.uri"].search(
             [
                 ("name", "=", request.redirect_uri),
-            ]
+            ],
+            limit=1,
         )
         http.request.env["oauth.provider.authorization.code"].sudo().create(
             {
@@ -196,6 +195,13 @@ class OdooValidator(RequestValidator):
     def save_bearer_token(self, token, request, *args, **kwargs):
         """Store the bearer token into the database"""
         scopes = token.get("scope", "").split()
+
+        client_token_type = request.client_obj.token_type
+
+        if client_token_type == "jwt":
+            if isinstance(token["access_token"], bytes):
+                token["access_token"] = token["access_token"].decode()
+
         http.request.env["oauth.provider.token"].sudo().create(
             {
                 "token": token["access_token"],

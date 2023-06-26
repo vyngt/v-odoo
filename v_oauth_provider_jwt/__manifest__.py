@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    "name": "V",
+    "name": "OAuth2 Provider - JWT Plugin",
     "summary": """OAuth2 Provider - JWT Support""",
     "description": """
         Fun
@@ -10,6 +10,11 @@
     "category": "V/OAuth",
     "version": "16.0.1.0.0",
     "depends": ["v_oauth_provider"],
-    "data": [],
+    "data": [
+        "views/oauth_provider_client.xml",
+    ],
+    "external_dependencies": {
+        "python": ["pyjwt", "cryptography"],
+    },
     "license": "LGPL-3",
 }  # type: ignore
