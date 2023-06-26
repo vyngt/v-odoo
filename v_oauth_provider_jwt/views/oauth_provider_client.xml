@@ -13,8 +13,8 @@
                         <button string="Generate a new random private key"
                             name="generate_private_key" type="object" colspan="2"
                             attrs="{'invisible': [('jwt_algorithm', 'in', [False, 'HS256', 'HS384', 'HS512'])]}" />
-                        <field name="jwt_private_key" />
-                        <field name="jwt_public_key" />
+                        <field name="jwt_private_key" widget="text" />
+                        <field name="jwt_public_key" widget="text" />
                     </group>
                 </page>
             </xpath>
