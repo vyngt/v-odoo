@@ -203,11 +203,6 @@ class OAuth2ProviderController(http.Controller):
         Not all parameters are required, depending on the application type
         """
         ensure_db()
-
-        # If no client_id is specified, get it from session
-        if client_id is None:
-            client_id = request.session.get("oauth_credentials", {}).get("client_id")
-
         client = (
             request.env["oauth.provider.client"]
             .sudo()
@@ -236,15 +231,15 @@ class OAuth2ProviderController(http.Controller):
         )
         if existing_code:
             credentials["odoo_user_id"] = existing_code.user_id.id
-        # Retrieve the existing token, if any, to get Odoo's user id
-        existing_token = request.env["oauth.provider.token"].search(
-            [
-                ("client_id.identifier", "=", client_id),
-                ("refresh_token", "=", refresh_token),
-            ]
-        )
-        if existing_token:
-            credentials["odoo_user_id"] = existing_token.user_id.id
+
+        # existing_token = request.env["oauth.provider.token"].search(
+        #     [
+        #         ("client_id.identifier", "=", client_id),
+        #         ("refresh_token", "=", refresh_token),
+        #     ]
+        # )
+        # if existing_token:
+        #     credentials["odoo_user_id"] = existing_token.user_id.id
 
         headers, body, status = oauth2_server.create_token_response(
             uri,
@@ -253,10 +248,6 @@ class OAuth2ProviderController(http.Controller):
             headers=headers,
             credentials=credentials,
         )
-
-        if existing_token:
-            # Remove old refresh token
-            existing_token.sudo().unlink()
 
         return werkzeug.wrappers.Response(body, status=status, headers=headers)
 
@@ -290,39 +281,13 @@ class OAuth2ProviderController(http.Controller):
             data.update(user_id=token.generate_user_id())
         return self._json_response(data=data)
 
-    @http.route("/oauth2/userinfo", type="http", auth="bearer", methods=["GET"])
+    @http.route("/oauth2/userinfo", type="http", auth="jwt", methods=["GET"])
     def userinfo(self, *args, **kwargs):
         """Return some information about the user linked to the supplied token"""
         ensure_db()
-        token = request.token
-        data = token.get_data_for_model("res.users", res_id=token.user_id.id)
-        return self._json_response(data=data)
 
-    @http.route("/oauth2/otherinfo", type="http", auth="bearer", methods=["GET"])
-    def otherinfo(self, access_token=None, model=None, *args, **kwargs):
-        """Return allowed information about the requested model"""
+        data = {}
 
-        # TODO: BUG
-        ensure_db()
-        token = request.token
-        if not token:
-            return self._json_response(
-                data={"error": "invalid_or_expired_token"}, status=401
-            )
-
-        model_obj = (
-            request.env["ir.model"]
-            .sudo()
-            .search(
-                [
-                    ("model", "=", model),
-                ]
-            )
-        )
-        if not model_obj:
-            return self._json_response(data={"error": "invalid_model"}, status=400)
-
-        data = token.get_data_for_model(model)
         return self._json_response(data=data)
 
     @http.route(
@@ -332,22 +297,9 @@ class OAuth2ProviderController(http.Controller):
         """Revoke the supplied token"""
         ensure_db()
         body = oauthlib.common.urlencode(request.httprequest.values.items())
-        db_token = request.env["oauth.provider.token"].search(
-            [
-                ("token", "=", token),
-            ]
-        )
-        if not db_token:
-            db_token = request.env["oauth.provider.token"].search(
-                [
-                    ("refresh_token", "=", token),
-                ]
-            )
-        if not db_token:
-            return self._json_response(
-                data={"error": "invalid_or_expired_token"}, status=401
-            )
-        oauth2_server = db_token.client_id.get_oauth2_server()
+        # TODO
+
+        oauth2_server: Any = ""
 
         # Retrieve needed arguments for oauthlib methods
         uri, http_method, body, headers = self._get_request_information()

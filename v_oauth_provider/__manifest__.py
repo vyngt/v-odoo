@@ -17,12 +17,11 @@
         "views/templates.xml",
         "views/oauth_provider_view.xml",
         "views/oauth_provider_client_view.xml",
-        "views/oauth_provider_scope_view.xml",
     ],
     "license": "LGPL-3",
     "pre_init_hook": "pre_init_hook",
     "external_dependencies": {
-        "python": ["oauthlib"],
+        "python": ["oauthlib", "pyjwt", "cryptography"],
     },
     "application": True,
 }  # type: ignore

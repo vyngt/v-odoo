@@ -8,7 +8,7 @@
                 <field name="identifier" />
                 <field name="grant_type" />
                 <field name="response_type" />
-                <field name="scope_ids" />
+                <field name="scope" />
             </tree>
         </field>
     </record>
@@ -23,12 +23,13 @@
                     </h1>
                     <group>
                         <field name="identifier" />
+                        <field name="secret" />
+                        <field name="issuer" />
                         <field name="grant_type" />
                         <field name="response_type" />
                     </group>
                     <group string="Scopes">
-                        <field name="token_type" />
-                        <field name="scope_ids" widget="many2many_tags" />
+                        <field name="scope" widget="text" />
                     </group>
                     <notebook colspan="4">
                         <page string="Allowed Redirect URIs">
@@ -38,6 +39,15 @@
                                     <field name="name" />
                                 </tree>
                             </field>
+                        </page>
+                        <page string="JSON Web Token">
+                            <group>
+                                <field name="jwt_algorithm" />
+                                <button string="Generate a new random private key"
+                                    name="generate_private_key" type="object" colspan="2" />
+                                <field name="jwt_private_key" widget="text" />
+                                <field name="jwt_public_key" widget="text" />
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -51,7 +61,7 @@
             <search string="OAuth2 Provider Clients">
                 <field name="name" />
                 <field name="identifier" />
-                <field name="scope_ids" />
+                <field name="scope" />
             </search>
         </field>
     </record>

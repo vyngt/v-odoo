@@ -1,3 +1,5 @@
+from typing import Any
+
 from odoo import api, fields, models
 
 
@@ -25,14 +27,18 @@ class OAuth2ProviderAuthorizationCode(models.Model):
         required=True,
         help="Redirect URI associated to this authorization code.",
     )
-    scope_ids = fields.Many2many(
-        comodel_name="oauth.provider.scope",
+    scope = fields.Char(
         string="Scopes",
         help="Scopes allowed by this authorization code.",
     )
-    active = fields.Boolean(
-        default=True, help="When unchecked, the code is invalidated."
-    )
+
+    expires_at = fields.Datetime(required=True, help="Expiration time of the token.")
+    active = fields.Boolean(compute="_compute_active", store=True)
+
+    def _compute_active(self):
+        record: Any
+        for record in self:
+            record.active = fields.Datetime.now() < record.expires_at
 
     _sql_constraints = [
         (
