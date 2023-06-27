@@ -300,12 +300,36 @@ class OAuth2ProviderController(http.Controller):
     def revoke_token(self, token=None, *args, **kwargs):
         """Revoke the supplied token"""
         ensure_db()
-        body = oauthlib.common.urlencode(request.httprequest.values.items())
 
-        oauth2_server: Any = ""
+        client = request.env["oauth.provider.client"]
+
+        if not token:
+            return self._json_response(data={"error": "missing token"}, status=401)
+
+        decoded = client.perform_decode(token)
+
+        if not decoded or "jti" not in decoded:
+            return self._json_response(data={"error": "invalid token"}, status=401)
+
+        _client = client.sudo().search(
+            [
+                ("identifier", "=", decoded["aud"]),
+                ("issuer", "=", decoded["iss"]),
+            ],
+            limit=1,
+        )
+
+        if not _client:
+            return self._json_response(data={"error": "invalid token"}, status=401)
+
+        client_id = oauthlib.common.urlencode({"client_id": _client.identifier}.items())
+
+        oauth2_server = _client.get_oauth2_server()
 
         # Retrieve needed arguments for oauthlib methods
         uri, http_method, body, headers = self._get_request_information()
+
+        body += f"&{client_id}"
 
         headers, body, status = oauth2_server.create_revocation_response(
             uri, http_method=http_method, body=body, headers=headers

@@ -132,6 +132,7 @@ class OdooValidator(RequestValidator):
 
     def revoke_token(self, token, token_type_hint, request, *args, **kwargs):
         """Revoke an access of refresh token"""
+        request.provider.revoke(token)
 
         return True
 

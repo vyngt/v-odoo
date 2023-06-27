@@ -17,7 +17,13 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
     load_pem_private_key,
 )
-from jwt.exceptions import DecodeError, InvalidAlgorithmError, InvalidAudienceError
+from jwt.exceptions import (
+    DecodeError,
+    ExpiredSignatureError,
+    InvalidAlgorithmError,
+    InvalidAudienceError,
+    InvalidSignatureError,
+)
 from oauthlib import oauth2
 from oauthlib.oauth2.rfc6749.tokens import random_token_generator
 from werkzeug.exceptions import InternalServerError  # type: ignore
@@ -276,7 +282,14 @@ class OAuth2ProviderClient(models.Model):
                 issuer=self.issuer,
                 audience=self.identifier,
             )
-        except ValueError:
+        except (
+            ValueError,
+            DecodeError,
+            InvalidAlgorithmError,
+            InvalidSignatureError,
+            InvalidAudienceError,
+            ExpiredSignatureError,
+        ):
             return None
 
         return decoded
@@ -291,3 +304,13 @@ class OAuth2ProviderClient(models.Model):
                 return decoded
 
         return None
+
+    @api.model
+    def revoke(self, token):
+        Blacklist = self.env["oauth.provider.blacklist"]
+        payload = self.env["oauth.provider.client"].perform_decode(token)
+        if "jti" in payload:
+            if not Blacklist.search([("token_id", "=", payload["jti"])]):
+                Blacklist.sudo().create({"token_id": payload["jti"]})
+
+        return True
