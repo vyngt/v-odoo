@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import base64
 import json
 import logging
 from datetime import datetime
@@ -28,33 +29,19 @@ class OAuth2ProviderController(http.Controller):
 
         return uri, http_method, body, headers
 
-    def _check_access_token(self, access_token):
-        """Check if the provided access token is valid"""
-        token = (
-            request.env["oauth.provider.token"]
-            .sudo()
-            .search(
-                [
-                    ("token", "=", access_token),
-                ]
-            )
-        )
-        if not token:
-            return False
+    def _get_client_id(self, headers):
+        auth = headers.get("Authorization", " ")
+        auth_type, auth_string = auth.split(" ", 1)
+        if auth_type != "Basic":
+            return None
 
-        oauth2_server = token.client_id.get_oauth2_server()
-        # Retrieve needed arguments for oauthlib methods
-        uri, http_method, body, headers = self._get_request_information()
+        auth_string_decoded = base64.b64decode(auth_string).decode()
+        if ":" not in auth_string_decoded:
+            return None
+        else:
+            client_id, _ = auth_string_decoded.split(":", 1)
 
-        # Validate request information
-        valid, oauthlib_request = oauth2_server.verify_request(
-            uri, http_method=http_method, body=body, headers=headers
-        )
-
-        if valid:
-            return token
-
-        return False
+        return client_id
 
     def _json_response(self, data=None, status=200, headers=None):
         """Returns a json response to the client"""
@@ -203,45 +190,34 @@ class OAuth2ProviderController(http.Controller):
         Not all parameters are required, depending on the application type
         """
         ensure_db()
-        client = (
-            request.env["oauth.provider.client"]
-            .sudo()
-            .search(
-                [
-                    ("identifier", "=", client_id),
-                ]
-            )
-        )
-
-        if not client and not refresh_token:
-            return self._json_response(data={"error": "invalid_client_id"}, status=401)
-
-        oauth2_server = client.get_oauth2_server()
 
         uri, http_method, body, headers = self._get_request_information()
+
+        if not client_id:
+            client_id = self._get_client_id(headers)
+
         credentials = {"scope": scope}
+        oauth2_server = None
 
-        existing_code = request.env["oauth.provider.authorization.code"].search(
-            [
-                ("client_id.identifier", "=", client_id),
-                ("code", "=", code),
-            ]
-        )
-        if existing_code:
+        if code:
+            existing_code = request.env["oauth.provider.authorization.code"].search(
+                [
+                    ("client_id.identifier", "=", client_id),
+                    ("code", "=", code),
+                ],
+                limit=1,
+            )
             credentials["odoo_user_id"] = existing_code.user_id.id
-
-        if refresh_token and not client_id:
-            client = request.env["oauth.provider.client"].get_provider_by_token(
-                refresh_token
+            oauth2_server = existing_code.client_id.get_oauth2_server()
+        elif refresh_token:
+            client = request.env["oauth.provider.client"].search(
+                [("identifier", "=", client_id)], limit=1
             )
-            if not client:
-                return self._json_response(
-                    data={"error": "invalid_or_expired_token"}, status=401
-                )
+            if client:
+                oauth2_server = client.get_oauth2_server()
 
-            body += "&%s" % oauthlib.common.urlencode(
-                {"client_id": client.identifier}.items()
-            )
+        if not oauth2_server:
+            return self._json_response(data={"error": "invalid_client_id"}, status=401)
 
         headers, body, status = oauth2_server.create_token_response(
             uri,
@@ -260,27 +236,8 @@ class OAuth2ProviderController(http.Controller):
         Similar to Google's "tokeninfo" request
         """
         ensure_db()
-        token = self._check_access_token(access_token)
-        if not token:
-            return self._json_response(
-                data={"error": "invalid_or_expired_token"}, status=401
-            )
+        data = {"active": False}
 
-        token_lifetime = (
-            fields.Datetime.from_string(token.expires_at) - datetime.now()  # type: ignore
-        ).seconds
-        # Base data to return
-        data = {
-            "audience": token.client_id.identifier,
-            "scopes": " ".join(token.scope_ids.mapped("code")),
-            "expires_in": token_lifetime,
-        }
-
-        # Add the oauth user identifier, if user's information access is
-        # allowed by the token's scopes
-        user_data = token.get_data_for_model("res.users", res_id=token.user_id.id)
-        if "id" in user_data:
-            data.update(user_id=token.generate_user_id())
         return self._json_response(data=data)
 
     @http.route("/oauth2/userinfo", type="http", auth="jwt", methods=["GET"])

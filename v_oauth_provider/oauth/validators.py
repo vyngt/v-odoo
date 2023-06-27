@@ -34,6 +34,7 @@ class OdooValidator(RequestValidator):
 
     def authenticate_client(self, request, *args, **kwargs):
         """Authenticate the client"""
+        _logger.info("Authenticate Client ID")
         auth_string = self._extract_auth(request)
         auth_string_decoded = base64.b64decode(auth_string).decode()
 
@@ -43,19 +44,24 @@ class OdooValidator(RequestValidator):
             client_secret = request.client_secret
         else:
             client_id, client_secret = auth_string_decoded.split(":", 1)
+            request.client_id = client_id
 
-        self._load_client(request)
+        self._load_client(request, client_id)
         return (request.provider.identifier == client_id) and (
             request.provider.secret or ""
         ) == (client_secret or "")
 
     def authenticate_client_id(self, client_id, request, *args, **kwargs):
         """Ensure client_id belong to a non-confidential client"""
+        _logger.info("Authenticate Client ID")
+
         self._load_client(request, client_id=client_id)
-        return bool(request.provider) and not request.provider.secret
+        return bool(request.provider)
 
     def client_authentication_required(self, request, *args, **kwargs):
         """Determine if the client authentication is required for the request"""
+        _logger.info("Authenticate Client Required")
+
         if self._extract_auth(request):
             return True
 
@@ -114,7 +120,6 @@ class OdooValidator(RequestValidator):
 
     def invalidate_authorization_code(self, client_id, code, request, *args, **kwargs):
         """Invalidates an authorization code"""
-        _logger.info("Echo -> Invalidate Code")
         code = http.request.env["oauth.provider.authorization.code"].search(
             [
                 ("client_id.identifier", "=", client_id),
@@ -220,6 +225,8 @@ class OdooValidator(RequestValidator):
 
     def validate_refresh_token(self, refresh_token, client, request, *args, **kwargs):
         payload = request.provider.perform_decode(refresh_token)
+        if not payload:
+            return False
         if "jti" not in payload or http.request.env["oauth.provider.blacklist"].search(
             [("token_id", "=", payload["jti"])]
         ):
