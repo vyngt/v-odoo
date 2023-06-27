@@ -24,6 +24,9 @@ class IrHttpBearer(models.AbstractModel):
                 not payload
                 or not payload["jti"]
                 or payload["exp"] < datetime.utcnow().timestamp()
+                or request.env["oauth.provider.blacklist"].search(
+                    [("token_id", "=", payload["jti"])]
+                )
             ):
                 raise Unauthorized("Unauthorized")
 
