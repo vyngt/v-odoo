@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 from werkzeug.exceptions import Unauthorized  # type: ignore
 
@@ -8,30 +9,37 @@ from odoo.http import request
 AUTHORIZATION_RE = re.compile(r"^Bearer ([^ ]+)$")
 
 
-# class IrHttpBearer(models.AbstractModel):
-#     _inherit = "ir.http"
+class IrHttpBearer(models.AbstractModel):
+    _inherit = "ir.http"
 
-#     @classmethod
-#     def _auth_method_jwt(cls):
-#         token = cls._get_bearer_token()
+    @classmethod
+    def _auth_method_jwt(cls):
+        token = cls._get_bearer_token()
 
-#         # Handle
+        try:
+            payload = cls._extract_payload(token)
 
-#         # if not token.active:
-#         #     raise Unauthorized()
+            if not payload or payload["exp"] < datetime.utcnow().timestamp():
+                raise Unauthorized
 
-#         # request.update_env(user=token.user_id.id)
-#         # request.token = token.sudo()
+            if payload["type"] == "normal" and payload["uid"]:
+                request.update_env(user=payload["uid"])
+        except KeyError:
+            raise Unauthorized
 
-#     @classmethod
-#     def _get_bearer_token(cls):
-#         authorization = request.httprequest.environ.get("HTTP_AUTHORIZATION")
+    @classmethod
+    def _get_bearer_token(cls):
+        authorization = request.httprequest.environ.get("HTTP_AUTHORIZATION")
 
-#         if not authorization:
-#             raise Unauthorized()
+        if not authorization:
+            raise Unauthorized()
 
-#         mo = AUTHORIZATION_RE.match(authorization)
-#         if not mo:
-#             raise Unauthorized()
+        mo = AUTHORIZATION_RE.match(authorization)
+        if not mo:
+            raise Unauthorized()
 
-#         return mo.group(1)
+        return mo.group(1)
+
+    @classmethod
+    def _extract_payload(cls, token):
+        return request.env["oauth.provider.client"].perform_decode(token)
