@@ -213,7 +213,7 @@ class OAuth2ProviderController(http.Controller):
             )
         )
 
-        if not client:
+        if not client and not refresh_token:
             return self._json_response(data={"error": "invalid_client_id"}, status=401)
 
         oauth2_server = client.get_oauth2_server()
@@ -230,14 +230,18 @@ class OAuth2ProviderController(http.Controller):
         if existing_code:
             credentials["odoo_user_id"] = existing_code.user_id.id
 
-        # existing_token = request.env["oauth.provider.token"].search(
-        #     [
-        #         ("client_id.identifier", "=", client_id),
-        #         ("refresh_token", "=", refresh_token),
-        #     ]
-        # )
-        # if existing_token:
-        #     credentials["odoo_user_id"] = existing_token.user_id.id
+        if refresh_token and not client_id:
+            client = request.env["oauth.provider.client"].get_provider_by_token(
+                refresh_token
+            )
+            if not client:
+                return self._json_response(
+                    data={"error": "invalid_or_expired_token"}, status=401
+                )
+
+            body += "&%s" % oauthlib.common.urlencode(
+                {"client_id": client.identifier}.items()
+            )
 
         headers, body, status = oauth2_server.create_token_response(
             uri,

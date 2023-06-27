@@ -314,3 +314,20 @@ class OAuth2ProviderClient(models.Model):
                 Blacklist.sudo().create({"token_id": payload["jti"]})
 
         return True
+
+    @api.model
+    def get_provider_by_token(self, token):
+        payload = self.perform_decode(token)
+        if not payload:
+            return None
+
+        try:
+            return self.search(
+                [
+                    ("identifier", "=", payload["aud"]),
+                    ("issuer", "=", payload["iss"]),
+                ],
+                limit=1,
+            )
+        except KeyError:
+            return None

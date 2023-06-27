@@ -107,7 +107,7 @@ class OdooValidator(RequestValidator):
 
     def get_original_scopes(self, refresh_token, request, *args, **kwargs):
         """Returns the list of scopes associated to the refresh token"""
-        # TODO: Fix here
+        # TODO
         token = refresh_token
 
         return "profile"
@@ -143,6 +143,10 @@ class OdooValidator(RequestValidator):
         Always refresh the token by default, but child classes could override
         this method to change this behavior.
         """
+
+        http.request.env["oauth.provider.blacklist"].sudo().create(
+            {"token_id": request.old_token_id}
+        )
         return True
 
     def save_authorization_code(self, client_id, code, request, *args, **kwargs):
@@ -167,8 +171,6 @@ class OdooValidator(RequestValidator):
             )
         )
 
-        _logger.info(f"create {code}")
-
     def save_bearer_token(self, token, request, *args, **kwargs):
         """Store the bearer token into the database"""
         if isinstance(token["access_token"], bytes):
@@ -190,8 +192,6 @@ class OdooValidator(RequestValidator):
 
     def validate_code(self, client_id, code, client, request, *args, **kwargs):
         """Check that the code is valid, and assigned to the given client"""
-        _logger.info(f"{client_id} ||| {code}  ||| {client}")
-
         code = http.request.env["oauth.provider.authorization.code"].search(
             [
                 ("client_id.identifier", "=", client_id),
@@ -199,7 +199,6 @@ class OdooValidator(RequestValidator):
             ]
         )
 
-        _logger.info(f"Echo {code}")
         request.odoo_user = code.user_id
         return bool(code)
 
@@ -207,7 +206,6 @@ class OdooValidator(RequestValidator):
         self, client_id, grant_type, client, request, *args, **kwargs
     ):
         """Ensure the client is authorized to use the requested grant_type"""
-        _logger.info(f"grant type -> {grant_type}")
         return client.client_id == client_id and grant_type in (
             request.provider.grant_type,
             "refresh_token",
@@ -221,9 +219,29 @@ class OdooValidator(RequestValidator):
         )
 
     def validate_refresh_token(self, refresh_token, client, request, *args, **kwargs):
-        # TODO
+        payload = request.provider.perform_decode(refresh_token)
+        if "jti" not in payload or http.request.env["oauth.provider.blacklist"].search(
+            [("token_id", "=", payload["jti"])]
+        ):
+            return False
 
-        return True
+        if "iss" not in payload or payload["iss"] != request.provider.issuer:
+            return False
+
+        if (
+            "type" not in payload
+            or payload["type"] != "refresh"
+            or "uid" not in payload
+            or not payload["uid"]
+        ):
+            return False
+
+        if user := http.request.env["res.users"].browse([payload["uid"]]).exists():
+            request.odoo_user = user
+
+        request.old_token_id = payload["jti"]
+
+        return "aud" in payload and payload["aud"] == client.client_id
 
     def validate_response_type(
         self, client_id, response_type, client, request, *args, **kwargs
