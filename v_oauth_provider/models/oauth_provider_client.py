@@ -251,8 +251,12 @@ class OAuth2ProviderClient(models.Model):
     @api.model
     def _encode(self, request, refresh: bool = False):
         utcnow = datetime.utcnow()
+
+        #
+        exp = utcnow + timedelta(seconds=36000 if refresh else request.expires_in)
+
         data = {
-            "exp": utcnow + timedelta(seconds=request.expires_in),
+            "exp": exp,
             "nbf": utcnow,
             "iss": request.provider.issuer,
             "aud": request.provider.identifier,
