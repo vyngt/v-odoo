@@ -283,8 +283,14 @@ class OAuth2ProviderController(http.Controller):
     def userinfo(self, *args, **kwargs):
         """Return some information about the user linked to the supplied token"""
         ensure_db()
+        base_url = request.env["ir.config_parameter"].sudo().get_param("web.base.url")
 
-        data = {}
+        data = {
+            "id": request.env.user.id,
+            "name": request.env.user.name,
+            "email": request.env.user.email,
+            "image": f"{base_url}/web/image/res.users/{request.env.user.id}/image_512",
+        }
 
         return self._json_response(data=data)
 

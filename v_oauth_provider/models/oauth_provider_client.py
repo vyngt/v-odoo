@@ -221,9 +221,10 @@ class OAuth2ProviderClient(models.Model):
     def get_oauth2_server(self, validator=None, **kwargs):
         self.ensure_one()
 
+        key = hashlib.sha256(str(datetime.utcnow().timestamp()).encode()).hexdigest()
+
         def jwt_generator(request):
-            """Generate a JSON Web Token using a custom payload from the client"""
-            payload = self._encode(request)
+            payload = self._encode(request, key)
 
             return jwt.encode(
                 payload,
@@ -232,7 +233,7 @@ class OAuth2ProviderClient(models.Model):
             )
 
         def jwt_refresh_generator(request):
-            payload = self._encode(request, True)
+            payload = self._encode(request, key, True)
 
             return jwt.encode(
                 payload,
@@ -249,10 +250,8 @@ class OAuth2ProviderClient(models.Model):
         return oauth2.WebApplicationServer(validator, **kwargs)
 
     @api.model
-    def _encode(self, request, refresh: bool = False):
+    def _encode(self, request, key, refresh: bool = False):
         utcnow = datetime.utcnow()
-
-        #
         exp = utcnow + timedelta(seconds=36000 if refresh else request.expires_in)
 
         data = {
@@ -264,6 +263,7 @@ class OAuth2ProviderClient(models.Model):
             "scope": request.provider.scope,
             "type": "normal" if not refresh else "refresh",
             "uid": request.odoo_user.id,
+            "jti": key,
         }
         return data
 

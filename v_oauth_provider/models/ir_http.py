@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime
 
@@ -20,12 +21,14 @@ class IrHttpBearer(models.AbstractModel):
             payload = cls._extract_payload(token)
 
             if not payload or payload["exp"] < datetime.utcnow().timestamp():
-                raise Unauthorized
+                raise Unauthorized("Unauthorized")
 
             if payload["type"] == "normal" and payload["uid"]:
                 request.update_env(user=payload["uid"])
+            else:
+                raise Unauthorized("Unauthorized")
         except KeyError:
-            raise Unauthorized
+            raise Unauthorized("Unauthorized")
 
     @classmethod
     def _get_bearer_token(cls):
