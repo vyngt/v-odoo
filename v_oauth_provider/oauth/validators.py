@@ -110,10 +110,11 @@ class OdooValidator(RequestValidator):
         # TODO: Fix here
         token = refresh_token
 
-        return ""
+        return "profile"
 
     def invalidate_authorization_code(self, client_id, code, request, *args, **kwargs):
         """Invalidates an authorization code"""
+        _logger.info("Echo -> Invalidate Code")
         code = http.request.env["oauth.provider.authorization.code"].search(
             [
                 ("client_id.identifier", "=", client_id),
@@ -126,35 +127,13 @@ class OdooValidator(RequestValidator):
         self, request_scopes, refresh_token, request, *args, **kwargs
     ):
         """Check if the requested scopes are within a scope of the token"""
-        # Extract Token
-        # OK
-        # token = http.request.env["oauth.provider.token"].search(
-        #     [
-        #         ("client_id", "=", request.provider.id),
-        #         ("refresh_token", "=", refresh_token),
-        #     ]
-        # )
-        return False
+
+        return True
 
     def revoke_token(self, token, token_type_hint, request, *args, **kwargs):
         """Revoke an access of refresh token"""
-        # db_token = http.request.env["oauth.provider.token"].search(
-        #     [
-        #         ("token", "=", token),
-        #     ]
-        # )
-        # # If we revoke a full token, simply unlink it
-        # if db_token:
-        #     db_token.sudo().unlink()
-        # # If we revoke a refresh token, empty it in the corresponding token
-        # else:
-        #     db_token = http.request.env["oauth.provider.token"].search(
-        #         [
-        #             ("refresh_token", "=", token),
-        #         ]
-        #     )
-        #     db_token.sudo().refresh_token = False
-        return False
+
+        return True
 
     def rotate_refresh_token(self, request):
         """Determine if the refresh token has to be renewed
@@ -173,70 +152,35 @@ class OdooValidator(RequestValidator):
             ],
             limit=1,
         )
-        http.request.env["oauth.provider.authorization.code"].sudo().create(
-            {
-                "code": code["code"],
-                "client_id": request.provider.id,
-                "user_id": request.odoo_user.id,
-                "redirect_uri_id": redirect_uri.id,
-                "scope_ids": [
-                    (
-                        6,
-                        0,
-                        request.provider.scope_ids.filtered(
-                            lambda record: record.code in request.scopes
-                        ).ids,
-                    )
-                ],
-            }
+        code = (
+            http.request.env["oauth.provider.authorization.code"]
+            .sudo()
+            .create(
+                {
+                    "code": code["code"],
+                    "client_id": request.provider.id,
+                    "user_id": request.odoo_user.id,
+                    "redirect_uri_id": redirect_uri.id,
+                    "scope": request.provider.scope,
+                }
+            )
         )
+
+        _logger.info(f"create {code}")
 
     def save_bearer_token(self, token, request, *args, **kwargs):
         """Store the bearer token into the database"""
-        # scopes = token.get("scope", "").split()
+        if isinstance(token["access_token"], bytes):
+            token["access_token"] = token["access_token"].decode()
 
-        # client_token_type = request.provider.token_type
-
-        # if client_token_type == "jwt":
-        #     if isinstance(token["access_token"], bytes):
-        #         token["access_token"] = token["access_token"].decode()
-
-        # http.request.env["oauth.provider.token"].sudo().create(
-        #     {
-        #         "token": token["access_token"],
-        #         "token_type": token["token_type"],
-        #         "refresh_token": token.get("refresh_token"),
-        #         "client_id": request.provider.id,
-        #         "user_id": token.get("odoo_user_id", request.odoo_user.id),
-        #         "scope_ids": [
-        #             (
-        #                 6,
-        #                 0,
-        #                 request.provider.scope_ids.filtered(
-        #                     lambda record: record.code in scopes
-        #                 ).ids,
-        #             )
-        #         ],
-        #         "expires_at": fields.Datetime.to_string(
-        #             datetime.now() + timedelta(seconds=token["expires_in"])
-        #         ),
-        #     }
-        # )
+        if isinstance(token["refresh_token"], bytes):
+            token["refresh_token"] = token["refresh_token"].decode()
 
         return request.provider.redirect_uri_ids[0].name
 
     def validate_bearer_token(self, token, scopes, request):
         """Ensure the supplied bearer token is valid, and allowed for the scopes"""
-        # token = http.request.env["oauth.provider.token"].search(
-        #     [
-        #         ("token", "=", token),
-        #     ]
-        # )
-        # if scopes is None:
-        #     scopes = ""
-
-        # return set(scopes.split()).issubset(set(token.scope_ids.mapped("code")))
-        return False
+        return True
 
     def validate_client_id(self, client_id, request, *args, **kwargs):
         """Ensure client_id belong to a valid and active client"""
@@ -245,12 +189,16 @@ class OdooValidator(RequestValidator):
 
     def validate_code(self, client_id, code, client, request, *args, **kwargs):
         """Check that the code is valid, and assigned to the given client"""
+        _logger.info(f"{client_id} ||| {code}  ||| {client}")
+
         code = http.request.env["oauth.provider.authorization.code"].search(
             [
                 ("client_id.identifier", "=", client_id),
                 ("code", "=", code),
             ]
         )
+
+        _logger.info(f"Echo {code}")
         request.odoo_user = code.user_id
         return bool(code)
 
@@ -258,6 +206,7 @@ class OdooValidator(RequestValidator):
         self, client_id, grant_type, client, request, *args, **kwargs
     ):
         """Ensure the client is authorized to use the requested grant_type"""
+        _logger.info(f"grant type -> {grant_type}")
         return client.client_id == client_id and grant_type in (
             request.provider.grant_type,
             "refresh_token",
@@ -273,7 +222,7 @@ class OdooValidator(RequestValidator):
     def validate_refresh_token(self, refresh_token, client, request, *args, **kwargs):
         # TODO
 
-        return False
+        return True
 
     def validate_response_type(
         self, client_id, response_type, client, request, *args, **kwargs

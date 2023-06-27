@@ -116,7 +116,6 @@ class OAuth2ProviderClient(models.Model):
         string="Private Key",
         help="Private key used for the JSON Web Token generation.",
         trim=False,
-        required=True,
     )
     jwt_public_key = fields.Char(
         string="Public Key",
@@ -212,7 +211,6 @@ class OAuth2ProviderClient(models.Model):
                 and client.jwt_algorithm[:2] in self.CRYPTOSYSTEMS
             ):
                 private_key = client._load_private_key()
-
                 public_key = private_key.public_key().public_bytes(
                     Encoding.PEM, PublicFormat.SubjectPublicKeyInfo
                 )
@@ -229,16 +227,16 @@ class OAuth2ProviderClient(models.Model):
 
             return jwt.encode(
                 payload,
-                request.provider.jwt_private_key,
+                request.provider._load_private_key(),
                 algorithm=request.provider.jwt_algorithm,
             )
 
-        def jwt_refresh_generator(request, refresh_token=False):
-            payload = self._encode(request)
+        def jwt_refresh_generator(request):
+            payload = self._encode(request, True)
 
             return jwt.encode(
                 payload,
-                request.provider.jwt_private_key,
+                request.provider._load_private_key(),
                 algorithm=request.provider.jwt_algorithm,
             )
 
@@ -250,10 +248,42 @@ class OAuth2ProviderClient(models.Model):
 
         return oauth2.WebApplicationServer(validator, **kwargs)
 
-    def _encode(self, request):
-        # TODO:
-        return {}
+    @api.model
+    def _encode(self, request, refresh: bool = False):
+        utcnow = datetime.utcnow()
+        data = {
+            "exp": utcnow + timedelta(seconds=request.expires_in),
+            "nbf": utcnow,
+            "iss": request.provider.issuer,
+            "aud": request.provider.identifier,
+            "iat": utcnow,
+            "scope": request.provider.scope,
+            "type": "normal" if not refresh else "refresh",
+            "uid": request.odoo_user.id,
+        }
+        return data
 
-    def _decode(self, payload):
-        # TODO:
-        return ""
+    def _decode(self, encoded):
+        try:
+            decoded = jwt.decode(
+                encoded,
+                self.jwt_public_key,
+                algorithms=[self.jwt_algorithm],
+                issuer=self.issuer,
+                audience=self.identifier,
+            )
+        except ValueError:
+            return None
+
+        return decoded
+
+    @api.model
+    def perform_decode(self, encoded):
+        provider: Any
+        providers: Any = self.search([])
+
+        for provider in providers:
+            if decoded := provider._decode(encoded):
+                return decoded
+
+        return None

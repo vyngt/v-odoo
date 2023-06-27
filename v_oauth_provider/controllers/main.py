@@ -134,7 +134,7 @@ class OAuth2ProviderController(http.Controller):
                 },
             )
 
-        oauth_scopes = client.scope_ids.filtered(lambda record: record.code in scopes)
+        oauth_scopes = client.scope
         return request.render(
             "v_oauth_provider.authorization",
             {
@@ -218,11 +218,9 @@ class OAuth2ProviderController(http.Controller):
 
         oauth2_server = client.get_oauth2_server()
 
-        # Retrieve needed arguments for oauthlib methods
         uri, http_method, body, headers = self._get_request_information()
         credentials = {"scope": scope}
 
-        # Retrieve the authorization code, if any, to get Odoo's user id
         existing_code = request.env["oauth.provider.authorization.code"].search(
             [
                 ("client_id.identifier", "=", client_id),
@@ -297,7 +295,6 @@ class OAuth2ProviderController(http.Controller):
         """Revoke the supplied token"""
         ensure_db()
         body = oauthlib.common.urlencode(request.httprequest.values.items())
-        # TODO
 
         oauth2_server: Any = ""
 

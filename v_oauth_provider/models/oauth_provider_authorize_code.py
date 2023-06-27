@@ -32,13 +32,7 @@ class OAuth2ProviderAuthorizationCode(models.Model):
         help="Scopes allowed by this authorization code.",
     )
 
-    expires_at = fields.Datetime(required=True, help="Expiration time of the token.")
-    active = fields.Boolean(compute="_compute_active", store=True)
-
-    def _compute_active(self):
-        record: Any
-        for record in self:
-            record.active = fields.Datetime.now() < record.expires_at
+    active = fields.Boolean(default=True)
 
     _sql_constraints = [
         (
