@@ -20,7 +20,11 @@ class IrHttpBearer(models.AbstractModel):
         try:
             payload = cls._extract_payload(token)
 
-            if not payload or payload["exp"] < datetime.utcnow().timestamp():
+            if (
+                not payload
+                or not payload["jti"]
+                or payload["exp"] < datetime.utcnow().timestamp()
+            ):
                 raise Unauthorized("Unauthorized")
 
             if payload["type"] == "normal" and payload["uid"]:
