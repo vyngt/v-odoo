@@ -25,8 +25,9 @@
                         <field name="identifier" />
                         <field name="secret" />
                         <field name="issuer" />
-                        <field name="grant_type" />
-                        <field name="response_type" />
+                        <field name="application_type" />
+                        <field name="grant_type" attrs="{'readonly': True}" />
+                        <field name="response_type" attrs="{'readonly': True}" />
                     </group>
                     <group string="Scopes">
                         <field name="scope" widget="text" />

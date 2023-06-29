@@ -209,7 +209,7 @@ class OAuth2ProviderController(http.Controller):
             )
             credentials["odoo_user_id"] = existing_code.user_id.id
             oauth2_server = existing_code.client_id.get_oauth2_server()
-        elif refresh_token:
+        elif refresh_token or client_id:
             client = request.env["oauth.provider.client"].search(
                 [("identifier", "=", client_id)], limit=1
             )

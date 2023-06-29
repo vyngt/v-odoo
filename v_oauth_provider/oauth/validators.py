@@ -184,8 +184,6 @@ class OdooValidator(RequestValidator):
         if isinstance(token["refresh_token"], bytes):
             token["refresh_token"] = token["refresh_token"].decode()
 
-        return request.provider.redirect_uri_ids[0].name
-
     def validate_bearer_token(self, token, scopes, request):
         """Ensure the supplied bearer token is valid, and allowed for the scopes"""
         return True
@@ -269,5 +267,6 @@ class OdooValidator(RequestValidator):
         uid = http.request.session.authenticate(
             http.request.session.db, username, password
         )
+
         request.odoo_user = http.request.env["res.users"].browse(uid)
         return bool(uid)

@@ -58,20 +58,33 @@ class OAuth2ProviderClient(models.Model):
 
     issuer = fields.Char(help="Issuer", required=True)
 
+    application_type = fields.Selection(
+        selection=[
+            ("w", "Web Application"),
+            ("l", "Legacy Application"),
+        ],
+        required=True,
+        default="w",
+    )
+
     grant_type = fields.Selection(
         selection=[
             ("authorization_code", "Authorization code"),
+            ("password", "Password"),
         ],
         string="Grant Type",
-        required=True,
+        compute="_compute_grant_response_type",
+        store=True,
     )
 
     response_type = fields.Selection(
         selection=[
             ("code", "Authorization code"),
+            ("none", "None"),
         ],
         string="Response Type",
-        required=True,
+        compute="_compute_grant_response_type",
+        store=True,
     )
 
     scope = fields.Char(
@@ -137,6 +150,22 @@ class OAuth2ProviderClient(models.Model):
             "The identifier of the client must be unique !",
         ),
     ]
+
+    @api.model
+    def application_type_mapping(self):
+        return {
+            "w": ("authorization_code", "code"),
+            "l": ("password", "none"),
+        }
+
+    @api.depends("application_type")
+    def _compute_grant_response_type(self):
+        client: Any
+        applications = self.application_type_mapping()
+        for client in self:
+            client.grant_type, client.response_type = applications[
+                client.application_type
+            ]
 
     @api.model
     def _get_secret(self):
@@ -253,7 +282,12 @@ class OAuth2ProviderClient(models.Model):
         kwargs["token_generator"] = jwt_generator
         kwargs["refresh_token_generator"] = jwt_refresh_generator
 
-        return oauth2.WebApplicationServer(validator, **kwargs)
+        if self.application_type == "authorization_code":
+            return oauth2.WebApplicationServer(validator, **kwargs)
+        elif self.application_type == "password":
+            return oauth2.LegacyApplicationServer(validator, **kwargs)
+
+        return oauth2.Server(validator, **kwargs)
 
     @api.model
     def _encode(self, request, key, refresh: bool = False):
