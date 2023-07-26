@@ -34,7 +34,6 @@ class OdooValidator(RequestValidator):
 
     def authenticate_client(self, request, *args, **kwargs):
         """Authenticate the client"""
-        _logger.info("Authenticate Client ID")
         auth_string = self._extract_auth(request)
         auth_string_decoded = base64.b64decode(auth_string).decode()
 
@@ -53,15 +52,11 @@ class OdooValidator(RequestValidator):
 
     def authenticate_client_id(self, client_id, request, *args, **kwargs):
         """Ensure client_id belong to a non-confidential client"""
-        _logger.info("Authenticate Client ID")
-
         self._load_client(request, client_id=client_id)
         return bool(request.provider)
 
     def client_authentication_required(self, request, *args, **kwargs):
         """Determine if the client authentication is required for the request"""
-        _logger.info("Authenticate Client Required")
-
         if self._extract_auth(request):
             return True
 
